@@ -1,12 +1,13 @@
 %{
-#include "parser.tab.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "tokens.h"
 %}
 
 DIGITO      [0-9]
 LETRA       [a-zA-Z_]
-ID          {LETRA}({LETRA}|{DIGITO})*
+IDTOKEN     {LETRA}({LETRA}|{DIGITO})*
 NUMERO      {DIGITO}+(\.{DIGITO}+)?
 
 %%
@@ -17,12 +18,12 @@ NUMERO      {DIGITO}+(\.{DIGITO}+)?
 "abs"           { return ABS; }
 
 {NUMERO}        {
-                    yylval.numero = atof(yytext);
+                    numeroActual = atof(yytext);
                     return NUM;
                 }
 
-{ID}            {
-                    yylval.texto = strdup(yytext);
+{IDTOKEN}       {
+                    strcpy(textoActual, yytext);
                     return ID;
                 }
 
@@ -38,10 +39,12 @@ NUMERO      {DIGITO}+(\.{DIGITO}+)?
 "("             { return PAR_IZQ; }
 ")"             { return PAR_DER; }
 
-[ \t\r\n]+      { /* ignorar espacios */ }
+[ \t\r\n]+      {
+                    /* Se ignoran espacios y saltos de linea */
+                }
 
 .               {
-                    return yytext[0];
+                    printf("Error lexico: caracter no valido '%s'\n", yytext);
                 }
 
 %%

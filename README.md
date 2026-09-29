@@ -1,8 +1,8 @@
 # Gramatica LL(1)
 
-Esta actividad implementa una gramatica LL(1) capaz de procesar expresiones matematicas, asignacion de variables y funciones como sin, cos, tan y abs.
+Este proyecto implementa una gramatica LL(1) capaz de procesar expresiones matematicas, asignacion de variables y funciones como sin, cos, tan y abs.
 
-El proyecto incluye las partes:
+El proyecto incluye:
 
 - Analisis lexico
 - Analisis sintactico
@@ -18,7 +18,7 @@ El proyecto incluye las partes:
 
 ## Funcionalidades
 
-La gramatica permite trabajar con:
+La gramatica permite trabajar con los operadores:
 
 ```text
 +
@@ -68,8 +68,9 @@ GramaticaLL1/
 │   └── prediccion.md
 │
 ├── src/
+│   ├── parser.c
 │   ├── scanner.l
-│   └── parser.y
+│   └── tokens.h
 │
 ├── evidencias/
 │   ├── pruebas_validas.png
@@ -118,7 +119,7 @@ El analisis lexico se encuentra en:
 src/scanner.l
 ```
 
-Este archivo reconoce:
+Este archivo fue desarrollado con Flex y reconoce:
 
 - Numeros
 - Identificadores
@@ -127,7 +128,7 @@ Este archivo reconoce:
 - Asignaciones
 - Funciones matematicas
 
-Algunos tokens utilizados son:
+Los tokens utilizados son:
 
 ```text
 NUM
@@ -147,31 +148,53 @@ PAR_IZQ
 PAR_DER
 ```
 
+Tambien detecta caracteres que no pertenecen al lenguaje.
+
+Por ejemplo:
+
+```text
+x = 5 @ 2;
+```
+
+El simbolo `@` no pertenece al lenguaje y es detectado como un error lexico.
+
 ## Analisis sintactico
 
 El analisis sintactico se encuentra en:
 
 ```text
-src/parser.y
+src/parser.c
 ```
 
-El parser verifica que las expresiones cumplan con la estructura definida en la gramatica.
+El parser fue implementado manualmente como un parser predictivo LL(1).
 
-Por ejemplo:
+Cada funcion representa un no terminal de la gramatica:
 
 ```text
-x = 10 + 5;
+inicio
+linea
+expr
+sumaResta
+elemento
+multDiv
+valor
+operacion
 ```
 
-es una expresion valida.
+El parser toma decisiones observando un solo token de entrada.
 
-Mientras que:
+Por ejemplo, para la regla:
 
 ```text
-x = + 5;
+valor -> NUM
+       | ID
+       | ( expr )
+       | operacion ( expr )
 ```
 
-genera un error sintactico.
+se puede elegir la produccion correspondiente dependiendo del token actual.
+
+Esto permite implementar el comportamiento de una gramatica LL(1).
 
 ## Analisis semantico
 
@@ -179,7 +202,7 @@ La parte semantica permite:
 
 - Guardar variables
 - Consultar variables
-- Actualizar valores
+- Actualizar variables
 - Realizar operaciones matematicas
 - Detectar variables no definidas
 - Detectar division por cero
@@ -209,6 +232,18 @@ se genera:
 
 ```text
 Error semantico: variable variableNoExiste no definida
+```
+
+Si se intenta dividir por cero:
+
+```text
+division = 10 / 0;
+```
+
+se genera:
+
+```text
+Error semantico: division por cero
 ```
 
 ## PRIMEROS
@@ -241,7 +276,7 @@ PRIMERO(operacion)  = { sin, cos, tan, abs }
 
 ## SIGUIENTES
 
-Los conjuntos SIGUIENTES se encuentran en:
+Los conjuntos SIGUIENTES se encuentran explicados en:
 
 ```text
 docs/siguientes.md
@@ -269,37 +304,72 @@ SIGUIENTE(operacion)   = { ( }
 
 ## PREDICCION
 
-Los conjuntos de prediccion se encuentran en:
+Los conjuntos de PREDICCION se encuentran en:
 
 ```text
 docs/prediccion.md
 ```
 
-Estos conjuntos permiten determinar que produccion utilizar observando un solo token de entrada.
+Estos conjuntos permiten saber que produccion utilizar observando un solo token de entrada.
 
-Esto permite verificar que la gramatica cumple con la condicion LL(1).
+Por ejemplo:
+
+```text
+valor -> NUM
+{ NUM }
+
+valor -> ID
+{ ID }
+
+valor -> ( expr )
+{ ( }
+
+valor -> operacion ( expr )
+{ sin, cos, tan, abs }
+```
+
+Como los conjuntos de prediccion de las producciones alternativas no se cruzan entre si, la gramatica cumple con la condicion LL(1).
+
+## Implementacion LL(1)
+
+El parser fue implementado manualmente en C.
+
+Cada no terminal de la gramatica tiene una funcion correspondiente.
+
+Por ejemplo:
+
+```text
+expr
+elemento
+valor
+operacion
+```
+
+Cada funcion revisa el token actual y decide que produccion debe utilizar.
+
+De esta manera se implementa un parser predictivo que utiliza un solo token de entrada para tomar decisiones.
 
 ## Compilacion
 
-Para generar el parser:
+Primero se debe entrar a la carpeta:
 
 ```bash
-bison -d parser.y
+cd src
 ```
 
-Para generar el scanner:
+Luego se genera el scanner con Flex:
 
 ```bash
 flex scanner.l
 ```
 
-Para compilar el programa:
+Despues se compila el parser junto con el archivo generado por Flex:
 
 ```bash
-gcc parser.tab.c lex.yy.c -o analizador -lm
+gcc parser.c lex.yy.c -o analizador -lm
 ```
 
-Para ejecutar:
+Finalmente se ejecuta:
 
 ```bash
 ./analizador
@@ -333,21 +403,39 @@ b = 2.00
 
 ## Pruebas de errores
 
-Se probaron errores sintacticos como:
+Tambien se realizaron pruebas para comprobar los errores lexicos, sintacticos y semanticos.
+
+### Error lexico
+
+Se utilizo un caracter que no pertenece al lenguaje:
+
+```text
+x = 5 @ 2;
+```
+
+El scanner detecta el caracter no valido.
+
+### Error sintactico
+
+Se probaron expresiones con una estructura incorrecta:
 
 ```text
 x = + 5;
 resultado = 5 * ;
 ```
 
-Tambien errores semanticos como:
+El parser detecta que las expresiones no cumplen con la gramatica.
+
+### Error semantico
+
+Se probaron casos como:
 
 ```text
 dato = variableNoExiste + 2;
 division = 10 / 0;
 ```
 
-El programa detecta correctamente estos casos.
+El programa detecta una variable no definida y una division por cero.
 
 ### Evidencia
 
@@ -355,8 +443,12 @@ El programa detecta correctamente estos casos.
 
 ## Conclusion
 
-Con este proyecto se implemento una gramatica LL(1) para procesar expresiones matematicas y asignaciones de variables.
+Con este proyecto se diseño e implemento una gramatica LL(1) capaz de procesar operaciones matematicas, funciones y asignacion de variables.
 
-Tambien se implementaron las etapas lexica, sintactica y semantica, ademas de los conjuntos PRIMEROS, SIGUIENTES y PREDICCION.
+La parte lexica fue desarrollada con Flex para reconocer los diferentes tokens del lenguaje y detectar caracteres no validos.
 
-Las pruebas realizadas permitieron comprobar que la gramatica acepta expresiones validas y tambien detecta errores en las entradas incorrectas.
+La parte sintactica fue implementada mediante un parser predictivo LL(1) en C, utilizando un solo token de entrada para decidir que produccion utilizar.
+
+Tambien se implemento la parte semantica para almacenar variables, realizar los calculos y detectar errores como variables no definidas, division por cero y modulo por cero.
+
+Finalmente se calcularon los conjuntos PRIMEROS, SIGUIENTES y PREDICCION y se realizaron pruebas de implementacion para comprobar el funcionamiento del lenguaje.
